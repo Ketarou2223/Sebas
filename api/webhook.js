@@ -1,16 +1,22 @@
 // api/webhook.js
-// 機能②：公開中一覧。LINE の webhook を受け、署名検証してから応答する。
-// Vercel に body を自動パースさせず、ストリームから raw body を読んで HMAC 検証する。
+// LINE webhook の「薄いルーター」。
+// 役割は次の4つだけで、機能ごとの中身は持たない：
+//   1) 署名検証（raw body を読んで HMAC-SHA256 で検証）
+//   2) イベントをパース
+//   3) 登録機能（features）を順に match し、最初に当たった機能の handle を呼ぶ
+//   4) どれも当たらなければ fallback（ヘルプ/案内）を呼ぶ
+//
+// ★ 新機能の追加は features/ にファイルを足して features/index.js に登録するだけ。
+//   このファイル本体は原則編集しない。
 
 import { verifySignature, replyMessage } from '../lib/line.js';
-import { getNowPlayingJP } from '../lib/tmdb.js';
-import { nowPlayingMessages, usageMessage } from '../lib/messages.js';
+import { features, fallback } from '../features/index.js';
+import * as gemini from '../lib/gemini.js';
+import { store } from '../lib/store.js';
+import { BUTLER_PROMPT } from '../lib/persona.js';
 
 // Vercel(@vercel/node) の自動ボディパースを無効化し、生ボディを自前で読む
 export const config = { api: { bodyParser: false } };
-
-// 「公開中」を尋ねるトリガー語（部分一致）
-const TRIGGERS = ['今公開', '公開中', '上映中', 'いま公開', '今上映', '今やってる'];
 
 /** リクエストストリームから raw body を Buffer として読む。 */
 async function readRawBody(req) {
@@ -63,25 +69,32 @@ export default async function handler(req, res) {
   return res.status(200).json({ ok: true });
 }
 
+/**
+ * 1イベントを features にルーティングする。
+ * テキストメッセージ以外は無視。登録機能を順に match し、最初に当たった handle を実行。
+ * どれも当たらなければ fallback を呼ぶ。
+ */
 async function handleEvent(event) {
   // テキストメッセージ以外は無視
   if (event.type !== 'message' || event.message?.type !== 'text') return;
 
   const text = event.message.text || '';
-  const isTrigger = TRIGGERS.some((t) => text.includes(t));
 
-  if (isTrigger) {
-    const movies = await getNowPlayingJP();
-    if (movies.length) {
-      await replyMessage(event.replyToken, nowPlayingMessages(movies));
-    } else {
-      await replyMessage(event.replyToken, [
-        { type: 'text', text: '現在、公開中の映画を取得できませんでした🙏 少し時間をおいて再度お試しください。' },
-      ]);
-    }
+  // 各機能へ渡す共通基盤
+  const ctx = {
+    event,
+    reply: (messages) => replyMessage(event.replyToken, messages),
+    gemini,
+    store,
+    butlerPrompt: BUTLER_PROMPT,
+  };
+
+  const feature = features.find((f) => f.match(text));
+  if (feature) {
+    await feature.handle(event, ctx);
     return;
   }
 
-  // トリガーに当たらなければ使い方を案内
-  await replyMessage(event.replyToken, usageMessage());
+  // どの機能にも当たらなかった場合のフォールバック
+  await fallback(event, ctx);
 }
