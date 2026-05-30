@@ -1,0 +1,13 @@
+{
+  "name": "line-movie-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LINE公式アカウント用の映画ボット（TMDB + Vercel Serverless Functions）",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}
