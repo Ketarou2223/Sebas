@@ -9,8 +9,10 @@ api/
   webhook.js     # LINE webhook の薄いルーター（署名検証 → ルーティングのみ。本体は編集しない）
   cron.js        # Vercel Cron の起動口。認証だけ行い実処理は features/movie.js を import
 features/
-  index.js       # 全機能のレジストリ。features 配列と fallback をエクスポート
+  index.js       # 全機能のレジストリ。features 配列（movie → review → butler）と fallback をエクスポート
   movie.js       # 映画機能（公開中一覧 + cron 用 pushTodayReleases）
+  review.js      # 感想の記録 / 振り返り / おすすめ判定（store + gemini）
+  butler.js      # 自由文の執事雑談（match 常時 true の高機能フォールバック・末尾登録）
   _template.js   # 新機能のひな形（コピーして使う。index.js には登録しない）
 lib/
   line.js        # 署名検証 / reply / broadcast（node:crypto + fetch）
@@ -56,6 +58,7 @@ lib/line.js → POST https://api.line.me/v2/bot/message/reply
 - ルーターは「検証とルーティング」だけ。機能ごとの分岐やビジネスロジックは持たない。
 - `features.find(f => f.match(text))` で **登録順に最初に当たった1つ** だけが処理する。具体的なトリガーを持つ機能ほど配列の前に置くと安全。
 - `handle` から外部 API を呼ぶときは `ctx`（reply / gemini / store / butlerPrompt）と `lib/` を使う。
+- 末尾の `butler` は `match` が常時 true のため、他機能がハズれたテキストをすべて受ける。結果として `index.js` の `fallback()` には通常到達しない（butler を外したときの保険として残置）。
 
 ## 公開日プッシュ（cron）の流れ
 

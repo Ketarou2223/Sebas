@@ -2,22 +2,26 @@
 
 執事ボット Sebas の機能目次。**機能を追加・変更したら、この表を必ず更新すること**（CLAUDE.md の開発ルール参照）。
 
-状態の凡例: 🟢 稼働 / 🟡 予定（土台のみ・未実装）
+状態の凡例: 🟢 稼働 / 🟡 予定（土台のみ・未実装） / ⚪ 残置（通常は到達しない保険）
 
 | 機能名 | トリガー | 概要 | 対応ファイル | 状態 |
 | --- | --- | --- | --- | --- |
 | movie（公開中一覧） | 「今公開」「公開中」「上映中」「いま公開」「今上映」「今やってる」を含むメッセージ | 現在 日本で劇場公開中の映画をポスター付き Flex カルーセルで返信 | `features/movie.js`（`handle`）, `lib/tmdb.js`, `lib/messages.js` | 🟢 |
 | movie（公開日プッシュ） | Vercel Cron（毎日 10:00 JST） | その日 日本で劇場公開される新作を全友だちへ broadcast。新作ゼロの日は配信しない | `features/movie.js`（`pushTodayReleases`）, `api/cron.js`, `lib/tmdb.js`, `lib/messages.js` | 🟢 |
-| fallback（ヘルプ/案内） | どの機能にも当たらないテキスト | 使い方の案内メッセージを返信 | `features/index.js`（`fallback`）, `lib/messages.js` | 🟢 |
+| review（感想の記録） | 「感想」で始まるメッセージ | 本文を Gemini に渡してタイトルと感想を抽出（JSON）し、ユーザーごとに保存。執事口調で記録完了を返信 | `features/review.js`（記録モード）, `lib/gemini.js`, `lib/store.js`（`addReview`） | 🟢 |
+| review（感想の振り返り） | 「感想一覧」「履歴」「観た映画」を含むメッセージ | 保存済みの感想を「・タイトル：感想」の一覧で返信（Gemini は呼ばずトークン節約）。0件なら案内 | `features/review.js`（振り返りモード）, `lib/store.js`（`getReviews`） | 🟢 |
+| review（おすすめ判定） | 「おすすめ」「観るべき」「見るべき」を含むメッセージ | 過去の感想を踏まえ、問い合わせ作品が好みに合うか執事 Sebas として Gemini が 2〜3 文で判定。感想0件なら案内 | `features/review.js`（判定モード）, `lib/gemini.js`, `lib/store.js`（`getReviews`）, `lib/persona.js` | 🟢 |
+| butler（執事の雑談） | どの機能にも当たらないすべてのテキスト（`match` 常時 true・登録末尾） | 執事人格（`BUTLER_PROMPT`）で自由文に応答する高機能フォールバック。Gemini 失敗時はお詫びの定型文。他機能の案内も自然に添える | `features/butler.js`, `lib/gemini.js`, `lib/persona.js` | 🟢 |
+| fallback（ヘルプ/案内） | （実質未到達）butler が末尾で全テキストを受けるため通常呼ばれない | 将来 butler を外した場合の保険として使い方案内を残置 | `features/index.js`（`fallback`）, `lib/messages.js` | ⚪ |
 
 ## 今後の追加予定（土台のみ）
 
-これらは基盤（`lib/`）だけ用意済みで、`features/` への実装は今後行う。追加時にこの表へ行を足すこと。
+基盤（`lib/`）だけ用意済みで未実装の候補。追加時にこの表へ行を足すこと。
+※「執事の雑談」（→ `features/butler.js`）と「感想の記録」（→ `features/review.js`）は実装済みのため上の稼働表へ移動した。
 
 | 候補 | 使う基盤 | メモ | 状態 |
 | --- | --- | --- | --- |
-| 執事の雑談 | `lib/gemini.js`, `lib/persona.js` | 当たらなかったメッセージに Gemini で執事らしく応答（fallback の差し替え） | 🟡 |
-| 感想の記録 など | `lib/store.js`（Upstash） | ユーザーごとの状態保存が必要な機能 | 🟡 |
+| （現時点で土台のみの候補はなし） | — | — | — |
 
 ## 新機能の追加手順（要約）
 

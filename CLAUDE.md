@@ -44,7 +44,7 @@ LINE 公式アカウント用の執事ボット「**Sebas（セバス）**」。
 | `CRON_SECRET` | 任意 | 設定すると `/api/cron` が `Authorization: Bearer <CRON_SECRET>` を要求。Vercel Cron は自動付与 |
 | `VERIFY_SIGNATURE` | 任意 | `"false"` で webhook の署名検証をスキップ（デバッグ専用）。本番は未設定のまま |
 | `GEMINI_API_KEY` | 任意 | Gemini（`lib/gemini.js`）の文章生成に使用。雑談等の機能を足すと必要 |
-| `GEMINI_MODEL` | 任意 | 使用する Gemini モデル（未設定なら `gemini-2.0-flash`） |
+| `GEMINI_MODEL` | 任意 | 使用する Gemini モデル（未設定なら `gemini-3.5-flash`） |
 | `UPSTASH_REDIS_REST_URL` | 任意 | Upstash Redis REST のエンドポイント。`lib/store.js` が使用 |
 | `UPSTASH_REDIS_REST_TOKEN` | 任意 | Upstash Redis REST のトークン。URL と両方揃うとストアが有効になる |
 
