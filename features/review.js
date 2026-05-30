@@ -7,6 +7,7 @@
 // ユーザーごとの保存は ctx.store（Upstash）。未設定なら保存は no-op・取得は空配列になる。
 
 import { store } from '../lib/store.js';
+import { getMemo } from '../lib/memory.js';
 
 /** 機能名。 */
 export const name = 'review';
@@ -151,8 +152,14 @@ async function recommendFromReviews(text, userId, ctx) {
     })
     .join('\n');
 
+  // 長期メモ（人物像）があれば、好み判定の軽い補助として添える。未設定なら空。
+  const memo = await getMemo(userId);
+  const memoLine = memo.length
+    ? `\n参考までに、主人について把握していること:\n${memo.map((m) => `- ${m.topic}: ${m.summary}`).join('\n')}`
+    : '';
+
   const prompt = [
-    `これは主人の過去の映画感想です:\n${list}`,
+    `これは主人の過去の映画感想です:\n${list}${memoLine}`,
     `主人の問い:'${text}'`,
     '主人の好みに合うか、執事 Sebas として日本語で簡潔に（2〜3文）判定し、理由を一言添えよ。',
   ].join('\n');

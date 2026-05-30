@@ -1,10 +1,10 @@
-// api/cron.js
-// 朝のご挨拶配信の起動口（挨拶＋天気の進言のみ）。
+// api/movie-push.js
+// 本日公開の映画プッシュの起動口。
 // 時刻は持たず、外部 cron（cron-job.org）が CRON_SECRET 付きで叩くことで起動する。
-// 認証だけ行い、実処理は features/morning.js の pushMorningGreeting() に集約してある。
-// 映画のプッシュは別エンドポイント（/api/movie-push）に分離。
+// 認証だけ行い、実処理（その日の新作を broadcast。0件なら何もしない）は
+// features/movie.js の pushTodayReleases() に集約してある。
 
-import { pushMorningGreeting } from '../features/morning.js';
+import { pushTodayReleases } from '../features/movie.js';
 
 export default async function handler(req, res) {
   // CRON_SECRET 設定時は Authorization: Bearer <CRON_SECRET> を検証
@@ -17,11 +17,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await pushMorningGreeting();
-    // ログ確認しやすいよう { ok, weather } を返す
-    return res.status(200).json(result);
+    const result = await pushTodayReleases();
+    // ログ確認しやすいよう { ok, broadcasted, count } を返す
+    return res.status(200).json({ ok: true, ...result });
   } catch (err) {
-    console.error('[cron] error:', err);
+    console.error('[movie-push] error:', err);
     return res.status(500).json({ error: String(err?.message || err) });
   }
 }

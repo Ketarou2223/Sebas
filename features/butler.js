@@ -4,6 +4,14 @@
 //
 // match は常に true なので、features/index.js では必ず最後に登録すること。
 // これにより、他の機能（movie・review 等）がすべてハズれたときだけ呼ばれる。
+//
+// 会話メモリ（lib/memory.js）と連携する：
+//   - 応答前に「長期メモ（人物像）」と「直近の会話バッファ」を文脈として Gemini に同梱する。
+//   - 応答後に pushTurn でバッファを更新し、7往復たまっていれば要約を発火する。
+// ただし“発露”は抑制的：メモを差し込むのは文脈としてのみで、出すか否かは persona.js の
+// システムプロンプトに委ねる（普段はフラット、話題が関連したときだけ自然に触れる）。
+
+import { getMemo, getBuffer, pushTurn, maybeSummarize } from '../lib/memory.js';
 
 /** 機能名。 */
 export const name = 'butler';
@@ -30,7 +38,12 @@ export function match() {
  */
 export async function handle(event, ctx) {
   const text = event.message?.text || '';
-  const system = `${ctx.butlerPrompt}\n${GUIDE_NOTE}`;
+  const userId = ctx.userId || event.source?.userId;
+
+  // 記憶（長期メモ・直近バッファ）を文脈として読み込む。未設定なら空。
+  const [memo, buffer] = await Promise.all([getMemo(userId), getBuffer(userId)]);
+
+  const system = `${ctx.butlerPrompt}\n${GUIDE_NOTE}\n${memoryContext(memo, buffer)}`;
 
   let answer = '';
   try {
@@ -45,4 +58,31 @@ export async function handle(event, ctx) {
       : '申し訳ございません、ただいま少々立て込んでおります。のちほど改めてお伺いいたします。';
 
   await ctx.reply([{ type: 'text', text: out }]);
+
+  // 返信後にバッファを更新し、たまっていれば要約を発火（失敗してもユーザー応答には影響しない）。
+  try {
+    await pushTurn(userId, text, out);
+    await maybeSummarize(userId, ctx.gemini);
+  } catch (err) {
+    console.error('[butler] memory update failed:', err);
+  }
+}
+
+/**
+ * 長期メモと直近バッファを、Gemini に渡す“参考情報”ブロックに整形する。
+ * どちらも空なら空文字（プロンプトを汚さない）。発露するか否かは persona 側のルールに委ねる。
+ * @param {Array<object>} memo
+ * @param {string[]} buffer
+ * @returns {string}
+ */
+function memoryContext(memo, buffer) {
+  const parts = [];
+  if (Array.isArray(memo) && memo.length) {
+    const lines = memo.map((m) => `・${m.topic}: ${m.summary}`).join('\n');
+    parts.push(`【主人について把握していること（参考。必要なときだけ自然に触れる）】\n${lines}`);
+  }
+  if (Array.isArray(buffer) && buffer.length) {
+    parts.push(`【直近の会話（参考）】\n${buffer.join('\n')}`);
+  }
+  return parts.join('\n\n');
 }
