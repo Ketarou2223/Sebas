@@ -12,6 +12,7 @@
 // システムプロンプトに委ねる（普段はフラット、話題が関連したときだけ自然に触れる）。
 
 import { getMemo, getBuffer, pushTurn, maybeSummarize } from '../lib/memory.js';
+import { BACKSTORY } from '../lib/backstory.js';
 
 /** 機能名。 */
 export const name = 'butler';
@@ -43,7 +44,7 @@ export async function handle(event, ctx) {
   // 記憶（長期メモ・直近バッファ）を文脈として読み込む。未設定なら空。
   const [memo, buffer] = await Promise.all([getMemo(userId), getBuffer(userId)]);
 
-  const system = `${ctx.butlerPrompt}\n${GUIDE_NOTE}\n${memoryContext(memo, buffer)}`;
+  const system = `${ctx.butlerPrompt}\n${GUIDE_NOTE}\n${backstoryContext()}\n${memoryContext(memo, buffer)}`;
 
   let answer = '';
   try {
@@ -69,7 +70,21 @@ export async function handle(event, ctx) {
 }
 
 /**
- * 長期メモと直近バッファを、Gemini に渡す“参考情報”ブロックに整形する。
+ * 来歴をシステムプロンプト用ブロックに整形する。
+ * persona.js の発露制御と必ずセットで渡す前提。Sebas が来歴を語り出さないよう注意書きを添える。
+ * @returns {string}
+ */
+function backstoryContext() {
+  return (
+    '【あなた自身の来歴（背景設定）——自分からはほぼ語らないこと】\n' +
+    '以下はあなたの人生の記録である。これはあなたの内側にある事実であり、問われても列挙・要約・説明しない。' +
+    '会話の流れの中で、ごく自然に、ごく小さく、ふとした一行としてのみにじみ出ることがある。\n\n' +
+    BACKSTORY
+  );
+}
+
+/**
+ * 長期メモと直近バッファを、Gemini に渡す”参考情報”ブロックに整形する。
  * どちらも空なら空文字（プロンプトを汚さない）。発露するか否かは persona 側のルールに委ねる。
  * @param {Array<object>} memo
  * @param {string[]} buffer

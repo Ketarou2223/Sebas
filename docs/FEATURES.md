@@ -15,6 +15,7 @@
 | butler（執事の雑談） | どの機能にも当たらないすべてのテキスト（`match` 常時 true・登録末尾） | 執事人格（`BUTLER_PROMPT`）で自由文に応答する高機能フォールバック。Gemini 失敗時はお詫びの定型文。他機能の案内も自然に添える。応答前に長期メモ・直近バッファを文脈注入し、応答後にバッファ更新→7往復で要約を発火 | `features/butler.js`, `lib/gemini.js`, `lib/persona.js`, `lib/memory.js` | 🟢 |
 | 会話メモリ（記憶） | （トリガーなし・横断基盤）butler の各応答に付随して動作 | ユーザー単位で「短期バッファ（直近の生発話）」と「長期メモ（人物像・関心事の JSON）」を保持。7往復たまると Gemini が要約して長期メモを更新（15項目超過時は削除でなく統合）。**発露は抑制的**：保持はするが、persona のルールにより話題が関連したときだけ自然に触れる。Upstash 未設定時は安全に no-op | `lib/memory.js`, `lib/persona.js`, `lib/gemini.js`, `features/butler.js`, `features/review.js`（判定の軽い補助） | 🟢 |
 | fallback（ヘルプ/案内） | （実質未到達）butler が末尾で全テキストを受けるため通常呼ばれない | 将来 butler を外した場合の保険として使い方案内を残置 | `features/index.js`（`fallback`）, `lib/messages.js` | ⚪ |
+| Sebas の来歴設定 | （トリガーなし・横断基盤）butler が Gemini を呼ぶ際のシステムプロンプトに常時同梱 | Sebas の詳細な来歴を定数として保持し、persona の発露制御とセットで Gemini に渡す。内容は非開示運用（ここに記載しない） | `lib/backstory.js`, `lib/persona.js`, `features/butler.js` | 🟢 |
 
 ## 今後の追加予定（土台のみ）
 

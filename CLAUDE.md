@@ -22,7 +22,7 @@ LINE 公式アカウント用の執事ボット「**Sebas（セバス）**」。
   - `gemini`: `lib/gemini.js`（`generateText(prompt, { system })`）
   - `store`: `lib/store.js`（`get/set/del`。Upstash 未設定なら no-op）
   - `butlerPrompt`: `lib/persona.js` の執事システムプロンプト
-- **`lib/`**: 共通基盤。`line.js`（署名検証/reply/broadcast）, `tmdb.js`（TMDB 取得）, `weather.js`（Open-Meteo 取得・APIキー不要）, `messages.js`（Flex 生成）, `gemini.js`, `store.js`, `memory.js`, `persona.js`。
+- **`lib/`**: 共通基盤。`line.js`（署名検証/reply/broadcast）, `tmdb.js`（TMDB 取得）, `weather.js`（Open-Meteo 取得・APIキー不要）, `messages.js`（Flex 生成）, `gemini.js`, `store.js`, `memory.js`, `persona.js`, `backstory.js`（Sebas の来歴設定・内容は非開示運用）。
 - **会話メモリ**（`lib/memory.js`）: ユーザー単位で短期バッファ（直近の生発話）と長期メモ（人物像 JSON）を保持。butler は応答前に文脈注入し、応答後に `pushTurn` → 7往復たまると Gemini 要約で長期メモ更新（15項目超は統合）。**「保持」と「発露」は分離**し、発露は `persona.js` のルールで抑制（普段は持ち出さず、話題が関連したときだけ自然に触れる）。Upstash 未設定なら no-op。詳細は [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
 - **push エンドポイントの役割**: 時刻管理は外部 cron（cron-job.org）に移行済み。Vercel 側のエンドポイントは時刻を持たず、`CRON_SECRET` 認証だけ行って実処理を feature に委譲する。
   - `api/cron.js`（**6:30 JST 想定**）: 認証後に `features/morning.js` の `pushMorningGreeting()` を呼ぶ（挨拶＋天気の進言のみ・テキスト1通）。
